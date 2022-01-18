@@ -1,0 +1,77 @@
+#! /usr/bin/env python
+
+import sys
+import time
+import logging
+logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+from scapy.all import *
+from scapy.arch import get_if_hwaddr 
+from argparse import ArgumentParser
+
+def checkValues():
+												#checks if valid IP
+	try:
+		aux=socket.inet_aton(argument.IP)
+
+	except socket.error:
+		print "   Invalid IP Address.   "
+		enabledProgram=False
+		sys.exit(1)
+
+												#cheks if valid counter
+	if argument.count<-1:
+		print "   INVALID COUNT.IT HAS TO BE >=-1"
+		enabledProgram=False
+		sys.exit(1)
+
+
+Values= ArgumentParser(description= '%(prog)s is the 2nd Script for "Redes y Teleprocesamientos at UNS 2021"')
+Values.add_argument('IP', help='It has to be a valid IP, invalid IPs are rejected.')
+Values.add_argument('-c', "--count",type=int, default=-1, help="Number of packages to be sent.")
+Values.add_argument('-p', "--port",type=int, default=80, required=False,help="It has to be a valid port.")
+
+argument = Values.parse_args() 
+
+
+enabledProgram=True						#assumes valid the initialization of the program
+
+checkValues();
+	
+
+if enabledProgram:
+
+	
+	
+	sent=0			
+	deliveredPackages=0
+	lostPackages=0					#Auxiliary variables to count the packages
+	cont=0
+	privatePort= random.randint(49152, 65535)	#Dynamic port or private port
+	while enabledProgram:
+		try:
+
+			package=sr1((IP(dst=argument.IP)/TCP(sport=privatePort, dport=argument.port, flags='S')), timeout = 1, verbose = 0)
+
+			if(package is None):
+				pass
+			elif(package.haslayer(TCP) and (package.getlayer(TCP).flags == 0x12 ) ):
+				print "Reply from %s, port: [%i], flags: SA" % (argument.IP,argument.port)
+				deliveredPackages=deliveredPackages+1
+			elif(package.haslayer(TCP) and (package.getlayer(TCP).flags == 0x14) ):
+				print "Reply from %s, port: [%i], flags: RA" % (argument.IP,argument.port)
+				deliveredPackages=deliveredPackages+1
+
+			sent=sent+1
+			
+			if argument.count!=-1:
+				if sent>=argument.count:
+					enabledProgram=False
+			time.sleep(1)
+		except KeyboardInterrupt: 				#if CTRL-C is pressed, program stops.
+			enabledProgram=False
+			print "  Sent {} probes, Received {} responses\n".format(sent,deliveredPackages)
+			sys.exit(1)
+
+	print "Sent {} probes, Received {} responses\n".format(sent,deliveredPackages)
+
+sys.exit(1)

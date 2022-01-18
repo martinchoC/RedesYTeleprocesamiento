@@ -1,0 +1,85 @@
+#! /usr/bin/env python
+
+import sys
+import time
+import logging
+logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+from scapy.all import srp1,Ether,ARP, socket
+from scapy.arch import get_if_hwaddr 
+from argparse import ArgumentParser
+
+def checkValues():
+												#checks if valid IP
+	try:
+		aux=socket.inet_aton(argument.IP)
+
+	except socket.error:
+		print "   Invalid IP.   \n"
+		enabledProgram=False
+		sys.exit(1)
+
+												#checks if valid DEVICE
+	try:
+		aux= get_if_hwaddr(argument.device)
+
+	except:
+		print "   INVALID DEVICE\n"
+		enabledProgram=False
+		sys.exit(1)
+												#cheks if valid counter
+	if argument.count<-1:
+		print "   INVALID COUNT.IT HAS TO BE >=-1"
+		enabledProgram=False
+		sys.exit(1)
+
+Values= ArgumentParser(description= '%(prog)s is the 1st Script for "Redes y Teleprocesamientos at UNS 2021"')
+Values.add_argument('IP', help='It has to be a valid IP, invalid IPs are rejected.')
+Values.add_argument('-c', "--count",type=int, default=-1, help="Number of packages to be sent.")
+Values.add_argument('-d', "--device", help="It has to be an valid device. Type 'ip add show' to verify. ", default=None, required=True)
+
+argument = Values.parse_args() 
+
+
+enabledProgram=True						#assumes valid the initialization of the program
+
+
+checkValues()
+
+if enabledProgram:
+
+	eth=Ether() 					# Ethernet header
+	eth.dst="ff:ff:ff:ff:ff:ff" 	
+	arp=ARP()					    # ARP header
+	arp.op=1 						# sets ARP as a "who-has" type	
+	arp.pdst= argument.IP 			# IP is set as destination
+	arp.hwdst="00:00:00:00:00:00"   	
+	
+									
+	deliveredPackages=0
+	lostPackages=0					#AUXILIARY VARIABLES
+	cont=0
+	
+	while enabledProgram:
+		try:
+			package=srp1(eth/arp, timeout=1, iface=argument.device, verbose=0, nofilter=1) 
+
+			if package is not None: 			#IF RESPONSE
+				print "Reply from: "+argument.IP+" ["+package.hwsrc+"]"
+				deliveredPackages=deliveredPackages+1
+			else: 								#IF NO RESPONSE
+				print "No response from: "+argument.IP
+				lostPackages=lostPackages+1
+
+			time.sleep(1) 						
+												#quantity of packages to be sent
+			cont= cont+1
+			if argument.count!=-1:
+				if cont>=argument.count:
+					enabledProgram=False
+
+		except KeyboardInterrupt: 				#if CTRL-C is pressed, program stops.
+			enabledProgram=False
+			print "\n\n********** TERMINATED **********\n\n"
+			break
+
+	print "\n There were {} packages sent. \n".format(deliveredPackages)
